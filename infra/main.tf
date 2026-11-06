@@ -92,3 +92,31 @@ resource "google_project_service" "apis" {
   service            = each.value
   disable_on_destroy = false
 }
+
+locals {
+  service_accounts = {
+    "vdt-pipeline" = ["roles/bigquery.jobUser", "roles/bigquery.dataEditor", "roles/storage.objectAdmin", "roles/pubsub.publisher", "roles/spanner.databaseUser"]
+    "vdt-sim"      = ["roles/bigquery.jobUser", "roles/bigquery.dataEditor", "roles/storage.objectAdmin"]
+    "vdt-app"      = ["roles/bigquery.jobUser", "roles/bigquery.dataViewer", "roles/spanner.databaseReader"]
+  }
+  sa_roles = flatten([
+    for sa, roles in local.service_accounts : [
+      for role in roles : { sa = sa, role = role }
+    ]
+  ])
+}
+
+resource "google_service_account" "sa" {
+  for_each     = local.service_accounts
+  project      = google_project.twin.project_id
+  account_id   = each.key
+  display_name = each.key
+  depends_on   = [google_project_service.apis]
+}
+
+resource "google_project_iam_member" "sa_roles" {
+  for_each = { for b in local.sa_roles : "${b.sa}/${b.role}" => b }
+  project  = google_project.twin.project_id
+  role     = each.value.role
+  member   = "serviceAccount:${google_service_account.sa[each.value.sa].email}"
+}
