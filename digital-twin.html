@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Архитектура Digital Twin на GCP</title>
+    <!-- Tailwind CSS для стилизации -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome для иконок -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        /* Стили для обеспечения правильного отображения при печати (сохранение как PDF) */
+        @media print {
+            body { margin: 0; background: white; padding: 0; }
+            #slide-container {
+                box-shadow: none;
+                border: none;
+                width: 100vw;
+                height: 100vh;
+                max-width: none;
+                aspect-ratio: auto;
+                border-radius: 0;
+            }
+            .no-print { display: none !important; }
+            /* Принудительная альбомная ориентация */
+            @page { size: landscape; margin: 0; }
+        }
+        
+        /* Плавные переходы для интерактивности */
+        .arch-card { transition: transform 0.2s, box-shadow 0.2s; }
+        .arch-card:hover { transform: translateY(-2px); box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06); }
+        
+        /* Пользовательская настройка Tailwind для цветов слоев */
+        .layer-1 { @apply bg-emerald-50 border-emerald-200 text-emerald-900; }
+        .layer-1-icon { @apply text-emerald-600; }
+        
+        .layer-2 { @apply bg-blue-50 border-blue-200 text-blue-900; }
+        .layer-2-icon { @apply text-blue-600; }
+        
+        .layer-3 { @apply bg-indigo-50 border-indigo-200 text-indigo-900; }
+        .layer-3-icon { @apply text-indigo-600; }
+        
+        .layer-4 { @apply bg-amber-50 border-amber-200 text-amber-900; }
+        .layer-4-icon { @apply text-amber-600; }
+        
+        .layer-5 { @apply bg-rose-50 border-rose-200 text-rose-900; }
+        .layer-5-icon { @apply text-rose-600; }
+    </style>
+</head>
+<body class="bg-gray-100 flex items-center justify-center min-h-screen p-4 md:p-8 font-sans">
+
+    <!-- Главный контейнер слайда (16:9) -->
+    <div id="slide-container" class="relative bg-white w-full max-w-[1400px] aspect-video shadow-2xl flex flex-col overflow-hidden rounded-xl border border-gray-200">
+        
+        <!-- Заголовок и Панель управления -->
+        <header class="flex justify-between items-center px-6 py-4 border-b border-gray-200 bg-gray-50 shrink-0">
+            <div>
+                <h1 class="text-2xl font-bold text-gray-800 flex items-center gap-2">
+                    <i class="fa-brands fa-google text-blue-500"></i>
+                    Транспортный Digital Twin
+                </h1>
+                <p class="text-sm text-gray-500">Целевая архитектура на Google Cloud Platform</p>
+            </div>
+            <div class="flex gap-3 no-print">
+                <button onclick="toggleNotes()" class="px-4 py-2 text-sm bg-white border border-gray-300 rounded hover:bg-gray-100 flex items-center gap-2 text-gray-700 transition">
+                    <i class="fas fa-file-alt"></i> Notes
+                </button>
+                <button onclick="window.print()" class="px-4 py-2 text-sm bg-white border border-gray-300 rounded hover:bg-gray-100 flex items-center gap-2 text-gray-700 transition">
+                    <i class="fas fa-print"></i> PDF
+                </button>
+                <button onclick="toggleFullScreen()" class="px-4 py-2 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 flex items-center gap-2 transition shadow-sm">
+                    <i class="fas fa-expand"></i> Fullscreen
+                </button>
+            </div>
+        </header>
+
+        <!-- Основная архитектурная схема (Grid) -->
+        <main class="flex-1 p-4 lg:p-6 flex flex-col overflow-hidden relative">
+            
+            <!-- Потоки данных - колонки -->
+            <div class="flex-1 grid grid-cols-5 gap-4 lg:gap-6 relative z-10">
+                
+                <!-- LAYER 1: DATA SOURCES -->
+                <div class="flex flex-col border-t-4 border-emerald-500 bg-white shadow-sm rounded-lg p-3">
+                    <div class="text-center mb-3">
+                        <h2 class="font-bold text-gray-700 text-sm">1. Источники данных</h2>
+                        <div class="text-xs text-gray-500">Data Sources</div>
+                    </div>
+                    <div class="flex-1 flex flex-col gap-2 justify-center">
+                        <div class="arch-card layer-1 border rounded p-2 flex items-center gap-3">
+                            <i class="fas fa-map-marked-alt layer-1-icon text-lg w-6 text-center"></i>
+                            <div class="text-xs font-medium leading-tight">GIS / City data<br><span class="font-normal opacity-75">Дороги, застройка</span></div>
+                        </div>
+                        <div class="arch-card layer-1 border rounded p-2 flex items-center gap-3">
+                            <i class="fas fa-bus layer-1-icon text-lg w-6 text-center"></i>
+                            <div class="text-xs font-medium leading-tight">HSL / Транспорт<br><span class="font-normal opacity-75">Маршруты, расписания</span></div>
+                        </div>
+                        <div class="arch-card layer-1 border rounded p-2 flex items-center gap-3">
+                            <i class="fas fa-traffic-light layer-1-icon text-lg w-6 text-center"></i>
+                            <div class="text-xs font-medium leading-tight">Traffic / ITS<br><span class="font-normal opacity-75">Счетчики, события</span></div>
+                        </div>
+                        <div class="arch-card layer-1 border rounded p-2 flex items-center gap-3">
+                            <i class="fas fa-hard-hat layer-1-icon text-lg w-6 text-center"></i>
+                            <div class="text-xs font-medium leading-tight">Инфраструктура<br><span class="font-normal opacity-75">Состояние, ремонты</span></div>
+                        </div>
+                        <div class="arch-card layer-1 border rounded p-2 flex items-center gap-3">
+                            <i class="fas fa-cloud-sun-rain layer-1-icon text-lg w-6 text-center"></i>
+                            <div class="text-xs font-medium leading-tight">Внешние данные<br><span class="font-normal opacity-75">Погода, аварии</span></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- LAYER 2: INGESTION -->
+                <div class="flex flex-col border-t-4 border-blue-500 bg-white shadow-sm rounded-lg p-3 relative">
+                    <!-- Arrow from left -->
+                    <div class="absolute -left-5 top-1/2 -translate-y-1/2 text-gray-300 text-2xl z-0"><i class="fas fa-chevron-right"></i></div>
+                    
+                    <div class="text-center mb-3">
+                        <h2 class="font-bold text-gray-700 text-sm">2. Сбор и обработка</h2>
+                        <div class="text-xs text-gray-500">Ingestion & Processing</div>
+                    </div>
+                    <div class="flex-1 flex flex-col gap-2 justify-center">
+                        <div class="arch-card layer-2 border rounded p-2 flex items-center gap-3">
+                            <i class="fas fa-satellite-dish layer-2-icon text-lg w-6 text-center"></i>
+                            <div class="text-xs font-medium leading-tight">Pub/Sub<br><span class="font-normal opacity-75">События / Streaming</span></div>
+                        </div>
+                        <div class="arch-card layer-2 border rounded p-2 flex items-center gap-3">
+                            <i class="fas fa-stream layer-2-icon text-lg w-6 text-center"></i>
+                            <div class="text-xs font-medium leading-tight">Dataflow<br><span class="font-normal opacity-75">Потоковая обработка</span></div>
+                        </div>
+                        <div class="arch-card layer-2 border rounded p-2 flex items-center gap-3">
+                            <i class="fas fa-database layer-2-icon text-lg w-6 text-center"></i>
+                            <div class="text-xs font-medium leading-tight">Datastream<br><span class="font-normal opacity-75">CDC из баз данных</span></div>
+                        </div>
+                        <div class="arch-card layer-2 border rounded p-2 flex items-center gap-3">
+                            <i class="fas fa-server layer-2-icon text-lg w-6 text-center"></i>
+                            <div class="text-xs font-medium leading-tight">Cloud Storage<br><span class="font-normal opacity-75">Raw data / Batch</span></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- LAYER 3: DATA PLATFORM -->
+                <div class="flex flex-col border-t-4 border-indigo-500 bg-white shadow-sm rounded-lg p-3 relative">
+                     <!-- Arrow from left -->
+                     <div class="absolute -left-5 top-1/2 -translate-y-1/2 text-gray-300 text-2xl z-0"><i class="fas fa-chevron-right"></i></div>
+
+                    <div class="text-center mb-3">
+                        <h2 class="font-bold text-gray-700 text-sm">3. Платформа данных</h2>
+                        <div class="text-xs text-gray-500">Analytical Platform</div>
+                    </div>
+                    <div class="flex-1 flex flex-col gap-3 justify-center relative">
+                        <!-- BigQuery as the core -->
+                        <div class="arch-card layer-3 border-2 border-indigo-300 rounded-lg p-3 flex flex-col items-center justify-center text-center flex-1 shadow-inner relative overflow-hidden bg-indigo-50/50">
+                            <div class="absolute inset-0 opacity-10 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI4IiBoZWlnaHQ9IjgiPgo8cmVjdCB3aWR0aD0iOCIgaGVpZ2h0PSI4IiBmaWxsPSIjZmZmIiAvPgo8cGF0aCBkPSJNMCAwTDggOFpNOCAwTDAgOFoiIHN0cm9rZT0iIzAwMCIgc3Ryb2tlLXdpZHRoPSIxIiBvcGFjaXR5PSIwLjEiIC8+Cjwvc3ZnPg==')]"></div>
+                            <i class="fas fa-search-location text-3xl layer-3-icon mb-2 relative z-10"></i>
+                            <div class="text-sm font-bold relative z-10">BigQuery GIS</div>
+                            <div class="text-xs opacity-80 mt-1 relative z-10">Аналитическое хранилище, геопространственные расчеты, исторические данные</div>
+                        </div>
+                        <div class="flex gap-2 h-16">
+                            <div class="arch-card layer-3 border rounded p-1 flex-1 flex flex-col items-center justify-center text-center">
+                                <i class="fas fa-project-diagram layer-3-icon text-sm mb-1"></i>
+                                <div class="text-[10px] font-medium leading-none">Dataplex<br><span class="font-normal opacity-75">Metadata</span></div>
+                            </div>
+                            <div class="arch-card layer-3 border rounded p-1 flex-1 flex flex-col items-center justify-center text-center">
+                                <i class="fas fa-code layer-3-icon text-sm mb-1"></i>
+                                <div class="text-[10px] font-medium leading-none">Dataform<br><span class="font-normal opacity-75">Transform</span></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- LAYER 4: DIGITAL TWIN -->
+                <div class="flex flex-col border-t-4 border-amber-500 bg-white shadow-sm rounded-lg p-3 relative">
+                     <!-- Arrow from left -->
+                     <div class="absolute -left-5 top-1/2 -translate-y-1/2 text-gray-300 text-2xl z-0"><i class="fas fa-chevron-right"></i></div>
+
+                    <div class="text-center mb-3">
+                        <h2 class="font-bold text-gray-700 text-sm">4. Двойник и Модели</h2>
+                        <div class="text-xs text-gray-500">Digital Twin Core</div>
+                    </div>
+                    <div class="flex-1 flex flex-col gap-2 justify-center">
+                        <div class="arch-card layer-4 border rounded p-2 flex flex-col items-center text-center gap-1 border-dashed">
+                            <i class="fas fa-project-diagram layer-4-icon text-lg"></i>
+                            <div class="text-xs font-bold leading-tight">Spanner Graph <span class="font-normal text-[10px] bg-amber-200 text-amber-800 px-1 rounded">(Опционально)</span></div>
+                            <div class="text-[10px] leading-tight opacity-80">Топология сети, узлы и связи</div>
+                        </div>
+                        <div class="flex justify-center my-1"><i class="fas fa-arrow-down text-amber-300 text-xs"></i></div>
+                        <div class="arch-card layer-4 border rounded p-2 flex flex-col items-center text-center gap-1">
+                            <i class="fas fa-car-side layer-4-icon text-lg"></i>
+                            <div class="text-xs font-bold leading-tight">MATSim / SUMO</div>
+                            <div class="text-[10px] leading-tight opacity-80">Транспортный симуляционный движок</div>
+                        </div>
+                        <div class="flex justify-center my-1"><i class="fas fa-sync-alt text-amber-300 text-xs"></i></div>
+                        <div class="arch-card layer-4 border rounded p-2 flex flex-col items-center text-center gap-1">
+                            <i class="fas fa-brain layer-4-icon text-lg"></i>
+                            <div class="text-xs font-bold leading-tight">Vertex AI</div>
+                            <div class="text-[10px] leading-tight opacity-80">Прогнозирование спроса, AI-поддержка</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- LAYER 5: DECISION SUPPORT -->
+                <div class="flex flex-col border-t-4 border-rose-500 bg-white shadow-sm rounded-lg p-3 relative">
+                     <!-- Arrow from left -->
+                     <div class="absolute -left-5 top-1/2 -translate-y-1/2 text-gray-300 text-2xl z-0"><i class="fas fa-chevron-right"></i></div>
+
+                    <div class="text-center mb-3">
+                        <h2 class="font-bold text-gray-700 text-sm">5. Принятие решений</h2>
+                        <div class="text-xs text-gray-500">Applications & UI</div>
+                    </div>
+                    <div class="flex-1 flex flex-col gap-2 justify-center">
+                        <div class="arch-card layer-5 border rounded p-2 flex items-center gap-3">
+                            <i class="fas fa-layer-group layer-5-icon text-lg w-6 text-center"></i>
+                            <div class="text-xs font-medium leading-tight">GIS / 3D Twin<br><span class="font-normal opacity-75">Карта и цифровая модель</span></div>
+                        </div>
+                        <div class="arch-card layer-5 border rounded p-2 flex items-center gap-3">
+                            <i class="fas fa-chart-pie layer-5-icon text-lg w-6 text-center"></i>
+                            <div class="text-xs font-medium leading-tight">Looker / Power BI<br><span class="font-normal opacity-75">Аналитические дашборды</span></div>
+                        </div>
+                        <div class="arch-card layer-5 border rounded p-2 flex items-center gap-3">
+                            <i class="fas fa-balance-scale layer-5-icon text-lg w-6 text-center"></i>
+                            <div class="text-xs font-medium leading-tight">Scenario Compare<br><span class="font-normal opacity-75">Сравнение вариантов</span></div>
+                        </div>
+                        <div class="arch-card layer-5 border rounded p-2 flex items-center gap-3">
+                            <i class="fas fa-server layer-5-icon text-lg w-6 text-center"></i>
+                            <div class="text-xs font-medium leading-tight">Cloud Run / GKE<br><span class="font-normal opacity-75">Backend API сервисов</span></div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Кросс-функциональные сервисы (Горизонтальная полоса) -->
+            <div class="mt-4 border border-gray-300 rounded-lg bg-gray-50 flex overflow-hidden shrink-0">
+                <div class="bg-gray-200 px-4 py-2 flex items-center justify-center font-bold text-xs text-gray-600 uppercase border-r border-gray-300 shrink-0">
+                    Cross-Cutting
+                </div>
+                <div class="flex-1 flex justify-between items-center px-4 py-2 text-xs text-gray-600 font-medium overflow-x-auto">
+                    <span class="flex items-center gap-1"><i class="fas fa-shield-alt text-gray-400"></i> Security & Encryption</span>
+                    <span class="flex items-center gap-1"><i class="fas fa-key text-gray-400"></i> IAM & Privacy</span>
+                    <span class="flex items-center gap-1"><i class="fas fa-cogs text-gray-400"></i> Cloud Composer (Orchestration)</span>
+                    <span class="flex items-center gap-1"><i class="fas fa-chart-line text-gray-400"></i> Logging & Monitoring</span>
+                    <span class="flex items-center gap-1"><i class="fas fa-code-branch text-gray-400"></i> CI/CD</span>
+                </div>
+            </div>
+        </main>
+
+        <!-- Footer / Ключевое сообщение -->
+        <footer class="bg-blue-900 text-white p-4 flex items-start gap-3 shrink-0">
+            <i class="fas fa-info-circle text-xl text-blue-300 mt-0.5"></i>
+            <div>
+                <p class="font-semibold text-sm leading-tight">Архитектурный инсайт:</p>
+                <p class="text-sm opacity-90 leading-tight">BigQuery — это мощная аналитическая основа (GIS, история), но <span class="text-amber-300 font-bold">не весь Digital Twin</span>. Модель графа транспортной сети (Spanner Graph) и симуляционный движок (MATSim/SUMO) — это отдельные, специализированные компоненты, работающие поверх аналитической базы.</p>
+            </div>
+        </footer>
+    </div>
+
+    <!-- Модальное окно с заметками -->
+    <div id="notes-modal" class="fixed inset-0 bg-black/60 z-50 hidden flex items-center justify-center p-4 backdrop-blur-sm no-print">
+        <div class="bg-white rounded-xl shadow-2xl w-full max-w-2xl flex flex-col overflow-hidden max-h-[80vh]">
+            <div class="flex justify-between items-center p-4 border-b border-gray-200 bg-gray-50">
+                <h3 class="font-bold text-lg text-gray-800"><i class="fas fa-book-open text-blue-500 mr-2"></i>Design Notes (Заметки к архитектуре)</h3>
+                <button onclick="toggleNotes()" class="text-gray-400 hover:text-gray-600 transition"><i class="fas fa-times text-xl"></i></button>
+            </div>
+            <div class="p-6 overflow-y-auto text-sm text-gray-700 space-y-4">
+                <p><strong>Концепция платформы:</strong> Данная архитектура разделяет хранение/аналитику (BigQuery) и поведенческую симуляцию (MATSim). Это позволяет избежать перегрузки DWH нетипичными для него задачами по маршрутизации.</p>
+                
+                <h4 class="font-bold text-gray-900 mt-4 border-b pb-1">Ключевые технологии GCP:</h4>
+                <ul class="list-disc pl-5 space-y-1">
+                    <li><strong>BigQuery GIS:</strong> Хранит геометрию дорог, исторические замеры скорости, пространственно агрегирует данные.</li>
+                    <li><strong>Spanner Graph:</strong> Идеально подходит для топологии сети (перекрестки как узлы, дороги как ребра), обеспечивая ACID-транзакции при изменении инфраструктуры.</li>
+                    <li><strong>Vertex AI:</strong> Используется для предиктивной аналитики (прогноз пробок на основе погоды) и помощи в генерации сценариев, а не для физической симуляции машинок.</li>
+                </ul>
+
+                <h4 class="font-bold text-gray-900 mt-4 border-b pb-1">Пример потока (Добавление нового района):</h4>
+                <ol class="list-decimal pl-5 space-y-1">
+                    <li>Проект района загружается в Cloud Storage (Layer 2).</li>
+                    <li>Данные нормализуются Dataflow и сохраняются как новый сценарий в BigQuery (Layer 3).</li>
+                    <li>Топология обновляется в Spanner Graph (Layer 4).</li>
+                    <li>Запускается симуляция MATSim на Cloud Run/GKE для оценки нагрузки на сеть.</li>
+                    <li>Результаты анализируются через дашборд Looker (Layer 5).</li>
+                </ol>
+            </div>
+            <div class="p-4 border-t border-gray-200 bg-gray-50 flex justify-end">
+                <button onclick="toggleNotes()" class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition text-sm">Закрыть</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Скрипты для интерактивности -->
+    <script>
+        // Функция для полноэкранного режима
+        function toggleFullScreen() {
+            const elem = document.getElementById("slide-container");
+            if (!document.fullscreenElement) {
+                if (elem.requestFullscreen) {
+                    elem.requestFullscreen().catch(err => {
+                        alert(`Ошибка при переходе в полноэкранный режим: ${err.message}`);
+                    });
+                } else if (elem.webkitRequestFullscreen) { /* Safari */
+                    elem.webkitRequestFullscreen();
+                } else if (elem.msRequestFullscreen) { /* IE11 */
+                    elem.msRequestFullscreen();
+                }
+            } else {
+                if (document.exitFullscreen) {
+                    document.exitFullscreen();
+                } else if (document.webkitExitFullscreen) { /* Safari */
+                    document.webkitExitFullscreen();
+                } else if (document.msExitFullscreen) { /* IE11 */
+                    document.msExitFullscreen();
+                }
+            }
+        }
+
+        // Функция переключения модального окна с заметками
+        function toggleNotes() {
+            const modal = document.getElementById('notes-modal');
+            if (modal.classList.contains('hidden')) {
+                modal.classList.remove('hidden');
+            } else {
+                modal.classList.add('hidden');
+            }
+        }
+    </script>
+</body>
+</html>
