@@ -18,7 +18,7 @@ variable "billing_account_id" {
 provider "google" {
   region                = "europe-north1"
   user_project_override = true
-  billing_project       = "project-91ffb8fd-9244-4305-b14"
+  billing_project       = "vantaa-digital-twin-0"
 }
 
 resource "google_project" "twin" {
@@ -119,4 +119,24 @@ resource "google_project_iam_member" "sa_roles" {
   project  = google_project.twin.project_id
   role     = each.value.role
   member   = "serviceAccount:${google_service_account.sa[each.value.sa].email}"
+}
+
+resource "google_storage_bucket" "buckets" {
+  for_each                    = toset(["raw", "sim"])
+  project                     = google_project.twin.project_id
+  name                        = "${google_project.twin.project_id}-${each.key}"
+  location                    = "EUROPE-NORTH1"
+  uniform_bucket_level_access = true
+  public_access_prevention    = "enforced"
+  labels                      = { app = "vdt" }
+  depends_on                  = [google_project_service.apis]
+}
+
+resource "google_bigquery_dataset" "layers" {
+  for_each   = toset(["vdt_bronze", "vdt_silver", "vdt_gold"])
+  project    = google_project.twin.project_id
+  dataset_id = each.key
+  location   = "europe-north1"
+  labels     = { app = "vdt" }
+  depends_on = [google_project_service.apis]
 }
